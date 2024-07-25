@@ -323,6 +323,22 @@ class NestedCrossValidator:
       )
     return param_grid
 
+  def optimiseTrainSet(self, best_params, test, baseline_score):
+    '''
+      determine if removing certain environments from the training set improves the model.
+      Returns optimised list of environments
+    '''
+    envs_to_remove = []
+    envs = self.current_train_set['1'].unique()
+    for env in envs:
+      train_subset = self.current_train_set[self.current_train_set != env]
+      model = Ensemble(train_subset, **best_params)
+      best_model.train()
+      score = self.testModel(best_model, test)
+      if score > baseline_score + 0.001:
+        envs_to_remove.append(env)
+    return list(set(envs) - set(envs_to_remove))
+
   def nestedCrossValidation(self, data, k=None, num_params=50, method="l1o", only_do_fold=None, destination="./"):
     '''
     Get unbiased accuracy of Ensemble model using nested cross validation.
@@ -369,7 +385,14 @@ class NestedCrossValidator:
     best_model.train()
     scores.append(self.testModel(best_model, test))
 
-    output = pd.DataFrame({f'{method}_score': scores, 'env': [envs[only_do_fold]]})
+    # Optimise the training set and refit model
+    optimised_train_set = self.optimiseTrainSet(best_params, test, scores[-1])
+    optim_model = Ensemble(optimised_train_set, **best_params)
+    optim_model.train()
+    optim_score = self.testModel(optim_model, test)
+
+
+    output = pd.DataFrame({f'{method}_score': scores, 'optim_score': [optim_score], 'env': [envs[only_do_fold]]})
     
     output.to_csv(f'{destination}/env_score_{only_do_fold}')
 
