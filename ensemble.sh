@@ -35,7 +35,7 @@ done
 
 # Load required packages
 module load python scipy-stack
-source venv/bin/activate
+source ../venv/bin/activate
 
 # Submit jobs
 for i in $(seq 0 25)

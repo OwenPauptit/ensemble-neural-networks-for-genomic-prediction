@@ -111,7 +111,7 @@ class MLP(nn.Module):
     return self(X0)
 
 class Ensemble:
- '''An ensemble of neural networks'''
+  '''An ensemble of neural networks'''
   def __init__(self, training_data, method="l1o", lr=0.1, batch_size=16, hidden_dims=[5], num_epochs=50, compute_loss=True, n_weak_learners=21):
     '''
     training_data - dataframe in CDBN format
@@ -369,7 +369,7 @@ class NestedCrossValidator:
     best_model.train()
     scores.append(self.testModel(best_model, test))
 
-    output = pd.DataFrame({'score': scores, 'env': [envs[only_do_fold]]})
+    output = pd.DataFrame({f'{method}_score': scores, 'env': [envs[only_do_fold]]})
     
     output.to_csv(f'{destination}/env_score_{only_do_fold}')
 

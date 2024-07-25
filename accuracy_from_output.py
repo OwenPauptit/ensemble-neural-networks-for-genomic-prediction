@@ -14,20 +14,16 @@ if __name__ == "__main__":
 
   dfs = []
   # Extract data from output files in directory
-  for i in range(10):
-    filepath = path.strip('/') + '/' + f"nested_cross_validation_score_{i}.csv"
+  for i in range(40):
+    filepath = path.strip('/') + '/' + f"env_score_{i}"
     if not os.path.exists(filepath):
-      raise ValueError(f"File does not exist: {filepath}")
+      break
     dfs.append(pd.read_csv(filepath))
 
-  # Compute average score  
-  scores = [df['0'][0] for df in dfs]
-  avg = sum(scores) / len(scores)
+  dfs = pd.concat(dfs)
+  dfs.to_csv(path.strip('/') + '/' + "combined_scores.csv")
 
-  print(f"Final scores: {scores}")
-  print(f"Average score: {avg}")
+  print("Combined dataframe: ")
+  print(dfs)
   
-  # Save as a text file in provided directory
-  file = open(path.strip('/') + '/' + "average_accuracy.txt", 'w')
-  file.write(str(avg))
-  file.close()
+ 
