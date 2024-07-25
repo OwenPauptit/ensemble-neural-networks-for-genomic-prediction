@@ -17,8 +17,8 @@ helptext="
 "
 
 # Default values
-method="l1o"
-destination="ensemble_cv"
+method="bagging"
+destination="yield_results"
 datapath="CDBN/fullDatasetSY.csv"
 
 # Process command line arguments
@@ -38,8 +38,8 @@ module load python scipy-stack
 source venv/bin/activate
 
 # Submit jobs
-for i in $(seq 0 9)
+for i in $(seq 0 25)
 do
-  sbatch --time 1:00:00 --mem 160G --cpus-per-task 32 --account def-haricots -J "${method}${i}" --wrap "python ensemble_cv_positional_args.py ${method} ${datapath} ${destination} ${i}"
+  sbatch --time 1:00:00 --mem 160G --cpus-per-task 32 --account def-haricots -J "${method}${i}" --wrap "python ensemble.py ${method} ${datapath} ${destination} ${i}"
 done
 

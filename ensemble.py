@@ -335,44 +335,43 @@ class NestedCrossValidator:
     subsets = np.array_split(shuffled, k)
     scores = []
 
-    for i in range(k):
-      if only_do_fold is not None and i != only_do_fold:
-        continue
-      test = subsets[i]
-      self.current_train_set = pd.concat(subsets[:i] + subsets[i+1:])
+    envs = data['1'].unique()
+    if only_do_fold >= len(envs):
+      print("Out of env range")
+      exit(0)
 
-      # Create parameter grid
-      param_grid = self.createRandomParameterGrid(n=num_params, method=method)
+    test = data[data['1'] == envs[only_do_fold]]
+    self.current_train_set = data[data['1'] != envs[only_do_fold]]
 
-      print(param_grid)
+    # Create parameter grid
+    param_grid = self.createRandomParameterGrid(n=num_params, method=method)
 
-      # Find model with best hyperparameters
-      with Pool() as pool:
-        tuning_scores = pool.map(
-            self.crossValidateParams, param_grid
-        )
+    print(param_grid)
 
-      # Save results for inspection later
-      results = pd.DataFrame(param_grid)
-      results['score'] = tuning_scores
-      results.to_csv(f'{destination}/nested_cross_validation_results_{i}.csv')
+    # Find model with best hyperparameters
+    with Pool() as pool:
+      tuning_scores = pool.map(
+          self.crossValidateParams, param_grid
+      )
 
-      # Find best parameters
-      best_score = max(tuning_scores)
-      index = tuning_scores.index(best_score)
-      best_params = param_grid[index]
+    # Save results for inspection later
+    results = pd.DataFrame(param_grid)
+    results['score'] = tuning_scores
+    results.to_csv(f'{destination}/detailed_env_score_{only_do_fold}.csv')
 
-      # Fit and test model with best hyperparameters
-      best_model = Ensemble(self.current_train_set, **best_params)
-      best_model.train()
-      scores.append(self.testModel(best_model, test))
+    # Find best parameters
+    best_score = max(tuning_scores)
+    index = tuning_scores.index(best_score)
+    best_params = param_grid[index]
 
-    # Avg scores
-    if only_do_fold is None:
-      pd.DataFrame(scores).to_csv(f'{destination}/nested_cross_validation_accuracies.csv')
-    else:
-      pd.DataFrame(scores).to_csv(f'{destination}/nested_cross_validation_score_{only_do_fold}.csv')
-    return sum(scores) / len(scores)
+    # Fit and test model with best hyperparameters
+    best_model = Ensemble(self.current_train_set, **best_params)
+    best_model.train()
+    scores.append(self.testModel(best_model, test))
+
+    output = pd.DataFrame({'score': scores, 'env': [envs[only_do_fold]]})
+    
+    output.to_csv(f'{destination}/env_score_{only_do_fold}')
 
 if __name__ == "__main__":
   # Validate command line arguments
@@ -408,7 +407,7 @@ if __name__ == "__main__":
   print("there are",len(data),"total observations across all environments")
 
   # Perform nested cross validation
-  cv = NestedCrossValidator(k1=10, k2=3, num_epochs=50)
+  cv = NestedCrossValidator(k2=3, num_epochs=50)
   accuracy = cv.nestedCrossValidation(data, num_params=300, method=method, destination=destination, only_do_fold=fold)
 
   print(f"Nested cross validation accuracy: {accuracy}")
