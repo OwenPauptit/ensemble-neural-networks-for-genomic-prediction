@@ -19,7 +19,7 @@ To get the complete dataset, you will need to do something like:
 bash ensemble.sh -m mlp -s path/to/datset.csv -d path/to/destination1
 bash ensemble.sh -m bagging -s path/to/dataset.csv -d path/to/destination2
 ```
-(Note that whilst the scripts will create the destination directories if they do not exist, it is safer to create these directories manually first to avoid concurrency issues)
+(Note that whilst the scripts will create the destination directories if they do not exist, it is safer to create these directories manually first to avoid concurrency issues. Also note that the datasets should be cleaned CDBN datasets, where column '1' is the environment, '3' is the quantitative attribute and '4' onwards are the feature-reduced SNP data)
 
 Doing this should submit 50 slurm jobs. Once they are all done, ensure that python and the scipy-stack are loaded by typing something along the lines of:
 ```bash
