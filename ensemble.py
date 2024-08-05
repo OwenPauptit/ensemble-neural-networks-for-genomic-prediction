@@ -219,7 +219,7 @@ class Ensemble:
       # Compute initial loss
       self.computeLoss()
     for i in range(self.num_epochs):
-      print(f"Epoch {i+1}")
+      #print(f"Epoch {i+1}")
 
       for model in self.models:
         model.trainOneEpoch()
@@ -323,21 +323,43 @@ class NestedCrossValidator:
       )
     return param_grid
 
-  def optimiseTrainSet(self, best_params, test, baseline_score):
+  def remove5WorstEnvs(self, best_params, train, test):
+    '''
+      remove the 5 worst offending environments
+    '''
+    scores = []
+    envs = self.current_train_set['1'].unique()
+
+    for env in envs:
+      train_subset = train[train != env]
+      model = Ensemble(train_subset, **best_params)
+      model.train()
+      score = self.testModel(model, test)
+      scores.append(score)
+
+    # Get envs which (when removed) correspond to top 5 scores
+    envs_to_remove = [env for i, (score, env) in enumerate(sorted(zip(scores,envs), reverse=True)) if i < 5]
+    return envs_to_remove
+
+  def optimiseTrainSet(self, best_params, train, test, critical_point):
     '''
       determine if removing certain environments from the training set improves the model.
-      Returns optimised list of environments
+      Returns optimised training set
     '''
     envs_to_remove = []
     envs = self.current_train_set['1'].unique()
+
     for env in envs:
-      train_subset = self.current_train_set[self.current_train_set != env]
+      train_subset = train[train['1'] != env]
       model = Ensemble(train_subset, **best_params)
-      best_model.train()
-      score = self.testModel(best_model, test)
-      if score > baseline_score + 0.001:
+      model.train()
+      score = self.testModel(model, test)
+      if score > critical_point:
         envs_to_remove.append(env)
-    return list(set(envs) - set(envs_to_remove))
+        print("Removing env with score:", score)
+    print("envs to remove: ")
+    print(envs_to_remove)
+    return envs_to_remove   
 
   def nestedCrossValidation(self, data, k=None, num_params=50, method="l1o", only_do_fold=None, destination="./"):
     '''
@@ -369,6 +391,7 @@ class NestedCrossValidator:
       tuning_scores = pool.map(
           self.crossValidateParams, param_grid
       )
+    print("Completed nested cross validation")
 
     # Save results for inspection later
     results = pd.DataFrame(param_grid)
@@ -379,20 +402,46 @@ class NestedCrossValidator:
     best_score = max(tuning_scores)
     index = tuning_scores.index(best_score)
     best_params = param_grid[index]
+    
+    # Fit and score bulk model
+    bulk_model = Ensemble(self.current_train_set, **best_params)
+    bulk_model.train()
+    bulk_score = self.testModel(bulk_model, test)
+  
+   
+    # Compute baseline score for optimised model
+    train_validation, test_validation = train_test_split(self.current_train_set, test_size=0.2)
+    scores = []
+    for i in range(31):
+      model = Ensemble(train_validation, **best_params)
+      model.train()
+      scores.append(self.testModel(model, test_validation))
 
-    # Fit and test model with best hyperparameters
-    best_model = Ensemble(self.current_train_set, **best_params)
-    best_model.train()
-    scores.append(self.testModel(best_model, test))
+    scores = sorted(scores)
+    print("baseline scores:", scores)
 
-    # Optimise the training set and refit model
-    optimised_train_set = self.optimiseTrainSet(best_params, test, scores[-1])
+    baseline = scores[int(len(scores) / 2)] # Take median instead of mean in case some models run into issues and output 0 -> skews mean
+    threshold = 0.01
+
+    # Find optimised training set
+    print("Optimising train set")
+    envs_to_remove = self.optimiseTrainSet(best_params, train_validation, test_validation, baseline + threshold)
+
+    if len(envs_to_remove) == len(self.current_train_set['1'].unique()):
+      envs_to_remove = self.remove5WorstEnvs(best_params, train_validation, test_validation) 
+
+    optimised_train_set = self.current_train_set[~self.current_train_set['1'].isin(envs_to_remove)] 
+
+    # Fit and score optimised model
     optim_model = Ensemble(optimised_train_set, **best_params)
     optim_model.train()
     optim_score = self.testModel(optim_model, test)
 
+    # # If optimised score is lower than bulk, optimisation has failed. Mark as 0 to indicate this clearly
+    # if optim_score < bulk_score:
+    #   optim_score = 0 
 
-    output = pd.DataFrame({f'{method}_score': scores, 'optim_score': [optim_score], 'env': [envs[only_do_fold]]})
+    output = pd.DataFrame({f'{method}_score': [bulk_score], 'optim_score': [optim_score], 'env': [envs[only_do_fold]], 'envs_removed_in_optim': [envs_to_remove]})
     
     output.to_csv(f'{destination}/env_score_{only_do_fold}')
 
@@ -432,5 +481,3 @@ if __name__ == "__main__":
   # Perform nested cross validation
   cv = NestedCrossValidator(k2=3, num_epochs=50)
   accuracy = cv.nestedCrossValidation(data, num_params=300, method=method, destination=destination, only_do_fold=fold)
-
-  print(f"Nested cross validation accuracy: {accuracy}")

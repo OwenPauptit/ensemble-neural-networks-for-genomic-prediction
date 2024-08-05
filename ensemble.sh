@@ -40,6 +40,6 @@ source ../venv/bin/activate
 # Submit jobs
 for i in $(seq 0 25)
 do
-  sbatch --time 1:00:00 --mem 160G --cpus-per-task 32 --account def-haricots -J "${method}${i}" --wrap "python ensemble.py ${method} ${datapath} ${destination} ${i}"
+  sbatch --time 2:30:00 --mem 160G --cpus-per-task 32 --account def-haricots -J "${method}${i}" --wrap "python ensemble.py ${method} ${datapath} ${destination} ${i}"
 done
 
