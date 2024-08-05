@@ -4,6 +4,8 @@ Hello! These scripts are for computing the accuracy of a range of different deep
 
 The final output is a csv file, which can then be used to construct plots like this:
 
+![Plot comparing the accuracy of different deep learning models used for genomic prediction](SW_NN.png)
+
 # Usage
 
 First, you must set up a virtual environment called `venv` in a HPC setting which allows the submission of slurm jobs.
