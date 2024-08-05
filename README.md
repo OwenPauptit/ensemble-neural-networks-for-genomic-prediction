@@ -1,6 +1,6 @@
 # Description
 
-Hello! These scripts are for computing the accuracy of a range of different deep learning models on each environment of a CDBN dataset. 
+These scripts are for computing the accuracy of a range of different deep learning models on each environment of a CDBN dataset. 
 
 The final output is a csv file, which can then be used to construct plots like this:
 
